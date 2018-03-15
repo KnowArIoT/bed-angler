@@ -9,6 +9,9 @@ int PIN_DOWN_2 = D5,
 float angle1 = 0;
 float angle2 = 0;
 
+int POT_MAX_DEGREE = 300;
+int ANGLE_HYSTERESIS = 2;
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -55,16 +58,22 @@ void updateSerial() {
 }
 
 void updateAngles() {
-  if (getCurrentAngle1() > angle1) {
+  if (getCurrentAngle1() < angle1 - DEGREE_HYSTERESIS) {
     digitalWrite(PIN_UP_1, HIGH);
-  } else if (getCurrentAngle1() < angle1) {
+  } else if (getCurrentAngle1() > angle1 + DEGREE_HYSTERESIS) {
+    digitalWrite(PIN_DOWN_1, HIGH);
+  } else {
+    digitalWrite(PIN_UP_1, LOW);
     digitalWrite(PIN_DOWN_1, LOW);
   }
 
-  if (getCurrentAngle2() > angle2) {
+  if (getCurrentAngle2() < angle2 - DEGREE_HYSTERESIS) {
     digitalWrite(PIN_UP_2, HIGH);
-  } else if (getCurrentAngle2() < angle2) {
+  } else if (getCurrentAngle2() > angle2 + DEGREE_HYSTERESIS) {
     digitalWrite(PIN_DOWN_2, HIGH);
+  } else {
+    digitalWrite(PIN_UP_2, LOW);
+    digitalWrite(PIN_DOWN_2, LOW);
   }
   
 }
@@ -78,6 +87,7 @@ int getCurrentAngle2() {
 
 int getAngleOfPotmeter(int pin) {
   int adcValue = analogRead(pin);
-  return adcValue;
+  int angle = adcValue * (POT_MAX_DEGREE / 1024);
+  return angle;
 }
 
