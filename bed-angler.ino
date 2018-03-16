@@ -1,16 +1,31 @@
 
 int PIN_POT_1 = A0;
 int PIN_POT_2 = A1;
-int PIN_UP_1 = D2;
-int PIN_DOWN_1 = D3;
-int PIN_UP_2 = D4;
-int PIN_DOWN_2 = D5,
+int PIN_UP_1 = 2;
+int PIN_DOWN_1 = 4;
+int PIN_UP_2 = 3;
+int PIN_DOWN_2 = 5;
 
 float angle1 = 0;
 float angle2 = 0;
 
+float pot1angle = 0;
+float pot2angle = 0;
+
 int POT_MAX_DEGREE = 300;
-int ANGLE_HYSTERESIS = 2;
+int DEGREE_HYSTERESIS = 2;
+int TIME_DELTA_MS = 500;
+
+int last_update = millis();
+
+const int numReadings = 10;
+
+int readings1[numReadings];      // the readings from the analog input
+int readIndex1 = 0;              // the index of the current reading
+int total1 = 0;                  // the running total
+int readings2[numReadings];      // the readings from the analog input
+int readIndex2 = 0;              // the index of the current reading
+int total2 = 0;                  // the running total
 
 void setup() {
   // put your setup code here, to run once:
@@ -19,6 +34,8 @@ void setup() {
   pinMode(PIN_DOWN_1, OUTPUT);
   pinMode(PIN_UP_2, OUTPUT);
   pinMode(PIN_DOWN_2, OUTPUT);
+  pinMode(PIN_POT_1, INPUT);
+  pinMode(PIN_POT_2, INPUT);
 }
 
 void loop() {
@@ -29,6 +46,8 @@ void loop() {
 void update() {
   updateSerial();
   updateAngles();
+  updateMotors();
+  //Serial.println(getAngleOfPotmeter(PIN_POT_1));
 }
 
 void updateSerial() {
@@ -57,37 +76,80 @@ void updateSerial() {
   }
 }
 
-void updateAngles() {
-  if (getCurrentAngle1() < angle1 - DEGREE_HYSTERESIS) {
+void updateMotors() {
+  if (last_update + TIME_DELTA_MS < millis()) return;
+  if (pot1angle < angle1 - DEGREE_HYSTERESIS) {
+    digitalWrite(PIN_DOWN_1, LOW);
     digitalWrite(PIN_UP_1, HIGH);
-  } else if (getCurrentAngle1() > angle1 + DEGREE_HYSTERESIS) {
+  } else if (pot1angle > angle1 + DEGREE_HYSTERESIS) {
+    digitalWrite(PIN_UP_1, LOW);
     digitalWrite(PIN_DOWN_1, HIGH);
   } else {
     digitalWrite(PIN_UP_1, LOW);
     digitalWrite(PIN_DOWN_1, LOW);
   }
 
-  if (getCurrentAngle2() < angle2 - DEGREE_HYSTERESIS) {
+    if (pot2angle < angle2 - DEGREE_HYSTERESIS) {
+    digitalWrite(PIN_DOWN_2, LOW);
     digitalWrite(PIN_UP_2, HIGH);
-  } else if (getCurrentAngle2() > angle2 + DEGREE_HYSTERESIS) {
+  } else if (pot2angle > angle2 + DEGREE_HYSTERESIS) {
+    digitalWrite(PIN_UP_2, LOW);
     digitalWrite(PIN_DOWN_2, HIGH);
   } else {
     digitalWrite(PIN_UP_2, LOW);
     digitalWrite(PIN_DOWN_2, LOW);
   }
+
+  last_update = millis();
   
 }
-int getCurrentAngle1() {
-  return getAngleOfPotmeter(PIN_POT_1);
+
+void updateAngles() {
+  getCurrentAngle1();
+  getCurrentAngle2();
+}
+
+void getCurrentAngle1() {
+  total1 = total1 - readings1[readIndex1];
+  // read from the sensor:
+  readings1[readIndex1] = analogRead(PIN_POT_1);
+  // add the reading to the total:
+  total1 = total1 + readings1[readIndex1];
+  // advance to the next position in the array:
+  readIndex1 = readIndex1 + 1;
+
+  // if we're at the end of the array...
+  if (readIndex1 >= numReadings) {
+    // ...wrap around to the beginning:
+    readIndex1 = 0;
+  }
+
+  // calculate the average:
+  pot1angle = float(float(total1 / numReadings) * (float(POT_MAX_DEGREE) / 1024.0));
 }
 
 int getCurrentAngle2() {
-  return getAngleOfPotmeter(PIN_POT_2);
+  total2 = total2 - readings2[readIndex2];
+  // read from the sensor:
+  readings2[readIndex2] = analogRead(PIN_POT_2);
+  // add the reading to the total:
+  total2 = total2 + readings2[readIndex2];
+  // advance to the next position in the array:
+  readIndex2 = readIndex2 + 1;
+
+  // if we're at the end of the array...
+  if (readIndex2 >= numReadings) {
+    // ...wrap around to the beginning:
+    readIndex2 = 0;
+  }
+
+  // calculate the average:
+  pot2angle = float(float(total2 / numReadings) * (float(POT_MAX_DEGREE) / 1024.0));
 }
 
 int getAngleOfPotmeter(int pin) {
   int adcValue = analogRead(pin);
-  int angle = adcValue * (POT_MAX_DEGREE / 1024);
+  int angle = int(float(adcValue) * (float(POT_MAX_DEGREE) / 1024.0));
   return angle;
 }
 
