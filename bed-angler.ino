@@ -14,9 +14,9 @@ float pot2angle = 0;
 
 int POT_MAX_DEGREE = 300;
 int DEGREE_HYSTERESIS = 2;
-int TIME_DELTA_MS = 500;
+unsigned long TIME_DELTA_MS = 500UL;
 
-int last_update = millis();
+unsigned long last_update = millis();
 
 const int numReadings = 10;
 
