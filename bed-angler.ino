@@ -12,9 +12,13 @@ float angle2 = 0;
 float pot1angle = 0;
 float pot2angle = 0;
 
-int POT_MAX_DEGREE = 300;
-int DEGREE_HYSTERESIS = 2;
+int POT_MAX_DEGREE = 60;
+int DEGREE_HYSTERESIS = 5;
 unsigned long TIME_DELTA_MS = 500UL;
+float ADC_MAX_VALUE = 1024.0;
+
+int POT_1_ANGLE_START = 0;
+int POT_2_ANGLE_START = 0;
 
 unsigned long last_update = millis();
 
@@ -30,6 +34,7 @@ int total2 = 0;                  // the running total
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
+  analogReference(INTERNAL);
   pinMode(PIN_UP_1, OUTPUT);
   pinMode(PIN_DOWN_1, OUTPUT);
   pinMode(PIN_UP_2, OUTPUT);
@@ -41,6 +46,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   update();
+  Serial.println(analogRead(PIN_POT_2));
 }
 
 void update() {
@@ -53,46 +59,51 @@ void update() {
 void updateSerial() {
   if (Serial.available()) {
     char input = Serial.read();
-    switch (input) {
-      // who am i
-      case 'W':
-        Serial.println("Bed-angler");
-        break;
-      // set angle1
-      case 'A': {
-        while (!Serial.available());
-        uint8_t newAngle1 = Serial.read();
-        angle1 = newAngle1;
-        break;
-      }
-      // set angle2
-      case 'B': {
-        while (!Serial.available());
-        uint8_t newAngle2 = Serial.read();
-        angle2 = newAngle2;
-        break;
+    if (input) {
+      switch (input) {
+        // who am i
+        case 'W':
+          Serial.println("Bed-angler");
+          break;
+        // set angle1
+        case 'A': {
+          while (!Serial.available());
+          uint8_t newAngle1 = Serial.read();
+          angle1 = newAngle1;
+          Serial.println("got new angle for motor A");
+          break;
+        }
+        // set angle2
+        case 'B': {
+          while (!Serial.available());
+          uint8_t newAngle2 = Serial.read();
+          angle2 = newAngle2;
+          Serial.println("got new angle for motor B");
+          break;
+        }
       }
     }
   }
 }
 
 void updateMotors() {
-  if (last_update + TIME_DELTA_MS < millis()) return;
-  if (pot1angle < angle1 - DEGREE_HYSTERESIS) {
+  //if (last_update + TIME_DELTA_MS < millis()) return;
+  if (pot1angle - POT_1_ANGLE_START < angle1 - DEGREE_HYSTERESIS) {
     digitalWrite(PIN_DOWN_1, LOW);
     digitalWrite(PIN_UP_1, HIGH);
-  } else if (pot1angle > angle1 + DEGREE_HYSTERESIS) {
+  } else if (pot1angle - POT_1_ANGLE_START > angle1 + DEGREE_HYSTERESIS) {
     digitalWrite(PIN_UP_1, LOW);
     digitalWrite(PIN_DOWN_1, HIGH);
+    Serial.println("Lowering bed");
   } else {
     digitalWrite(PIN_UP_1, LOW);
     digitalWrite(PIN_DOWN_1, LOW);
   }
 
-    if (pot2angle < angle2 - DEGREE_HYSTERESIS) {
+  if (pot2angle - POT_2_ANGLE_START < angle2 - DEGREE_HYSTERESIS) {
     digitalWrite(PIN_DOWN_2, LOW);
     digitalWrite(PIN_UP_2, HIGH);
-  } else if (pot2angle > angle2 + DEGREE_HYSTERESIS) {
+  } else if (pot2angle - POT_2_ANGLE_START > angle2 + DEGREE_HYSTERESIS) {
     digitalWrite(PIN_UP_2, LOW);
     digitalWrite(PIN_DOWN_2, HIGH);
   } else {
@@ -125,7 +136,7 @@ void getCurrentAngle1() {
   }
 
   // calculate the average:
-  pot1angle = float(float(total1 / numReadings) * (float(POT_MAX_DEGREE) / 1024.0));
+  pot1angle = float(float(total1 / numReadings) * (float(POT_MAX_DEGREE) / ADC_MAX_VALUE));
 }
 
 int getCurrentAngle2() {
@@ -144,12 +155,12 @@ int getCurrentAngle2() {
   }
 
   // calculate the average:
-  pot2angle = float(float(total2 / numReadings) * (float(POT_MAX_DEGREE) / 1024.0));
+  pot2angle = float(float(total2 / numReadings) * (float(POT_MAX_DEGREE) / ADC_MAX_VALUE));
 }
 
 int getAngleOfPotmeter(int pin) {
   int adcValue = analogRead(pin);
-  int angle = int(float(adcValue) * (float(POT_MAX_DEGREE) / 1024.0));
+  int angle = int(float(adcValue) * (float(POT_MAX_DEGREE) / ADC_MAX_VALUE));
   return angle;
 }
 
